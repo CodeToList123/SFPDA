@@ -10,14 +10,12 @@ import torch.optim as optim
 from torchvision import transforms
 import network, loss, student_net
 from torch.utils.data import DataLoader
-# from data_list import ImageList, ImageList_idx
 import random, pdb, math, copy
-# from tqdm import tqdm
 from scipy.spatial.distance import cdist
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import f1_score
-# from image_source import load_data
-from JL_modelevaluation import model_evaluation
+
+from Our_modelevaluation import model_evaluation
 from sklearn.metrics import classification_report
 import datetime
 import utils
@@ -76,8 +74,8 @@ def loader_get(data_train, data_target, data_test, args):
     source_loader = torch.utils.data.DataLoader(
         dataset=source_dataset,  # torch TensorDataset format
         batch_size=args.batch_size,  # mini batch size
-        shuffle=True,  # 要不要打乱数据 (打乱比较好)
-        num_workers=1,  # 多线程来读数据
+        shuffle=True,  
+        num_workers=1, 
         drop_last=False,
     )
 
@@ -85,8 +83,8 @@ def loader_get(data_train, data_target, data_test, args):
     target_loader = torch.utils.data.DataLoader(
         dataset=target_dataset,  # torch TensorDataset format
         batch_size=args.batch_size,  # mini batch size
-        shuffle=True,  # 要不要打乱数据 (打乱比较好)
-        num_workers=1,  # 多线程来读数据
+        shuffle=True, 
+        num_workers=1,
         drop_last=False,
     )
 
@@ -94,8 +92,8 @@ def loader_get(data_train, data_target, data_test, args):
     test_loader = torch.utils.data.DataLoader(
         dataset=test_dataset,  # torch TensorDataset format
         batch_size=args.batch_size,  # mini batch size
-        shuffle=True,  # 要不要打乱数据 (打乱比较好)
-        num_workers=1,  # 多线程来读数据
+        shuffle=True, 
+        num_workers=1, 
         drop_last=False
     )
     return source_loader, target_loader, test_loader
@@ -297,7 +295,6 @@ def train_target(netF, netB, netC, student_netF, student_netB, student_netC, opt
 
         if len_target_loader != 0:
             iter_target = iter(target_loader)
-        # 定义自适应权重
 
         Weight_alpha = (1 - pow(2.71828, -args.weight_alpha_weight * e / args.max_epoch)) / (1 + pow(2.71828, -args.weight_alpha_weight * e / args.max_epoch))
         # Weight_alpha = 0.5
@@ -358,19 +355,17 @@ def train_target(netF, netB, netC, student_netF, student_netB, student_netC, opt
             data_target, labels_target = data_target.to(
                 args.device), labels_target.to(args.device)
 
-            # Add Noise
-            if args.SNR != 1000:
+            # # Add Noise
+            # if args.SNR != 1000:
 
-                noise_tensor = torch.randn(data_target.shape[0], 24)
-                noise_sum = torch.sum(torch.pow(noise_tensor, 2))
-                feature_sum = torch.sum(torch.pow(data_target, 2))
-                SNR_pow = np.power(10, args.SNR/10)
-                SNR_ratio = torch.sqrt(feature_sum / (noise_sum * SNR_pow))
-                # 调整高斯噪声的强度（方差）
-                scaled_noise_tensor = noise_tensor.to(args.device) * SNR_ratio.to(args.device)
-                scaled_noise_tensor = scaled_noise_tensor.to(args.device)
-                # 将调整后的高斯噪声张量与目标张量相加
-                data_target = data_target + scaled_noise_tensor
+            #     noise_tensor = torch.randn(data_target.shape[0], 24)
+            #     noise_sum = torch.sum(torch.pow(noise_tensor, 2))
+            #     feature_sum = torch.sum(torch.pow(data_target, 2))
+            #     SNR_pow = np.power(10, args.SNR/10)
+            #     SNR_ratio = torch.sqrt(feature_sum / (noise_sum * SNR_pow))
+            #     scaled_noise_tensor = noise_tensor.to(args.device) * SNR_ratio.to(args.device)
+            #     scaled_noise_tensor = scaled_noise_tensor.to(args.device)
+            #     data_target = data_target + scaled_noise_tensor
 
             outputs_target = student_netC(student_netB(student_netF(data_target)))
             outputs_soft_source = netC(netB(netF(data_target)))
@@ -387,7 +382,6 @@ def train_target(netF, netB, netC, student_netF, student_netB, student_netC, opt
             labels_predict = mem_label[start_num: end_num]
             classifier_loss = torch.nn.CrossEntropyLoss()(outputs_target, labels_predict.long())
 
-            # 定义输出的自熵
             softmax_out = nn.Softmax(dim=1)(outputs_target)
             entropy_loss = torch.mean(loss.Entropy(softmax_out))
             msoftmax = softmax_out.mean(dim=0)
@@ -545,13 +539,13 @@ if __name__ == "__main__":
     setattr(args, "device", torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
     print(args)
     set_random_seed(args.seed)
-    source_loader, target_loader, test_loader, n_class = load_data(args) #输入数据
-    netF, netB, netC = get_teacher_net(args) #获取Teacher模型
-    student_netF, student_netB, student_netC = define_student_net(args) # 定义学生模型
-    optimizer = get_student_optimizer(student_netF, student_netB, student_netC, args) # 定义学生模型的优化器
+    source_loader, target_loader, test_loader, n_class = load_data(args) 
+    netF, netB, netC = get_teacher_net(args) 
+    student_netF, student_netB, student_netC = define_student_net(args)
+    optimizer = get_student_optimizer(student_netF, student_netB, student_netC, args) 
 
     get_initial_model_evaluation(target_loader, netF, netB, netC, args)
-    get_model_evaluation(test_loader, netF, netB, netC, args) # 先求解Source model在目标域的效果
+    get_model_evaluation(test_loader, netF, netB, netC, args) 
 
     start_time = time.time()
     train_target(netF, netB, netC, student_netF, student_netB, student_netC, optimizer, target_loader, test_loader, args)
